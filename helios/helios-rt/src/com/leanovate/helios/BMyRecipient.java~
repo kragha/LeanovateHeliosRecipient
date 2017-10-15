@@ -1,0 +1,61 @@
+package com.leanovate.helios;
+
+import javax.baja.alarm.*;
+
+import javax.baja.nre.annotations.NiagaraType;
+import javax.baja.sys.Sys;
+import javax.baja.sys.Type;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import org.json.JSONObject;
+
+
+/**
+ * Created by e283233 on 10/4/2017.
+ */
+@NiagaraType
+public class BMyRecipient extends BAlarmRecipient {
+/*+ ------------ BEGIN BAJA AUTO GENERATED CODE ------------ +*/
+/*@ $com.abc.test1.BMyRecipient(2979906276)1.0$ @*/
+/* Generated Wed Oct 04 15:12:14 IST 2017 by Slot-o-Matic (c) Tridium, Inc. 2012 */
+
+////////////////////////////////////////////////////////////////
+// Type
+////////////////////////////////////////////////////////////////
+  
+  @Override
+  public Type getType() { return TYPE; }
+
+  public static final Type TYPE = Sys.loadType(BMyRecipient.class);
+
+/*+ ------------ END BAJA AUTO GENERATED CODE -------------- +*/
+
+  private static final String USER_AGENT = "ragkrish/1.0";
+
+  private static final String USERNAME_PASSWD = "kragha2000@gmail.com:123surya";
+  
+  private static final String GET_URL = "https://ragkrish.freshdesk.com/api/v2/tickets";
+
+  private static final String POST_URL = "https://ragkrish.freshdesk.com/api/v2/tickets";
+
+
+  @Override
+  public void handleAlarm(BAlarmRecord bAlarmRecord) {
+
+    System.out.print("LeanovateHeliosRx: HndlAlm" + "AlmRec:" + bAlarmRecord + "\n");
+
+    if (bAlarmRecord.getSourceState().getOrdinal() == BSourceState.NORMAL)
+    {
+    	System.out.print("LeanovateHeliosRx: HndlAlm: " + "Normal State\n");
+    }
+    else 
+    {
+    	System.out.print("LeanovateHeliosRx: HndlAlm: " + "Alarm State!!\n");
+    }
+    }
+}
