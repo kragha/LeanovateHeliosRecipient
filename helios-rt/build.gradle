@@ -1,0 +1,26 @@
+/* Module Build File */
+apply from: "${System.getenv("niagara_home")}/etc/gradle/niagara.gradle"
+
+description     = "Helios Alarm Recipient for Ticket Handling"
+ext {
+  name            = "helios"
+  project.group   = "leanovate"
+  project.version = "1.0"
+}
+niagaraModule {
+  preferredSymbol = "he"
+  moduleName = "helios"
+  runtimeProfile = "rt"
+}
+
+dependencies {
+  compile "Tridium:nre:4.2"
+  compile "Tridium:baja:4.2"
+  compile "Tridium:alarm-rt:4.2"
+  compile "org.json-chargebee:org.json-chargebee:1.0"
+}
+
+moduleTestJar {
+  from('srcTest') {
+  }
+}
