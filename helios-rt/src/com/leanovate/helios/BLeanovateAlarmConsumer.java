@@ -7,7 +7,7 @@ import java.io.IOException;
 public class BLeanovateAlarmConsumer implements Runnable
 {
   private int childId;
-  private BAlarmRecord bAlarmRecord;
+  private ThreadDataShare threadDataShare;
 
   private static final int OK = 0;
   private static final int ERROR = -1;
@@ -18,22 +18,46 @@ public class BLeanovateAlarmConsumer implements Runnable
   
   private static final int TKT_PRTY_HIGH = 3;
   
-  public BLeanovateAlarmConsumer(int childId, BAlarmRecord bAlarmRecord)
+  public BLeanovateAlarmConsumer(int childId, ThreadDataShare threadDataShare, BAlarmRecord bAlarmRecord)
   {
     this.childId = childId;
-    this.bAlarmRecord = bAlarmRecord;
+    this.threadDataShare = threadDataShare;
+    this.threadDataShare.alarmObject = bAlarmRecord;
   }
+
+  public static boolean gotoServer = true;
   
   public void run()
   {
     System.out.println("BLeanovateAlarmConsumer child thread with ID: " + this.childId + " starts work now...");    
     
-    processAlarm(this.bAlarmRecord);
-    
+    if (gotoServer)
+    {
+      int ret = processAlarm(this.threadDataShare.alarmObject);
+      if (ret == OK)
+        System.out.println("BLeanovateAlarmConsumer: processAlarm OK");
+      else
+        System.out.println("BLeanovateAlarmConsumer: processAlarm ERROR!");
+    }
+    else
+    {
+      // simulate by a delay for testing only
+      try
+      {
+        Thread.sleep(8000);
+      }
+      
+      catch (InterruptedException e)
+      {
+        System.out.println("InterruptedException");
+        threadDataShare.threadFinished = true;
+      }
+    }
+    threadDataShare.threadFinished = true;
     System.out.println("BLeanovateAlarmConsumer child thread with ID: " + this.childId + " completed work now...");    
   }
   
-  private void processAlarm(BAlarmRecord bAlarmRecord)
+  private int processAlarm(BAlarmRecord bAlarmRecord)
   {
     BLeanovateTicketHandler ticketHandler = new BLeanovateTicketHandler();
     
@@ -76,12 +100,13 @@ public class BLeanovateAlarmConsumer implements Runnable
             // ticket for this point is not present now. either it was not created when alarm happennend, or 
             // has already been resolved or deleted in ticketing system. log and move on. nothing to do. 
             // ideally this should not happen
-            return;
+            return ERROR;
           }
       }
       catch (IOException e)
       {
         System.out.println("LeanovateHeliosRx: sendGET IOException!!");
+        return ERROR;
       }
     }
     else
@@ -100,7 +125,7 @@ public class BLeanovateAlarmConsumer implements Runnable
             System.out.println("LeanovateHeliosRx: HndlAlm: Open Ticket exists with" + "ID:" 
                   + tktId  + "  point-name: " + pointName +
                   "\nDoing nothing as ticket exists");
-            return;
+            return ERROR;
           }
   
           // no tkt exists for this point name. create one.
@@ -111,14 +136,16 @@ public class BLeanovateAlarmConsumer implements Runnable
           {
             System.out.println("LeanovateHeliosRx: sendPOST: Ticket Create Error!! " +
                 "point-name: " + bAlarmRecord.getSource().encodeToString());
-            return;
+            return ERROR;
           }
       }
       catch (IOException e)
       {
         System.out.println("LeanovateHeliosRx: sendPOST: IOException!!");
+        return ERROR;
       }             
       
     }
+    return OK;
   }  
 }
