@@ -83,9 +83,9 @@ public class BLeanovateTicketHandler
   {
     String queryField = "pointname";
     String FilterGetUrl = GET_SEARCH_TKT_URL + "\"" +
-        "((status:" + TKT_STATUS_OPEN + " OR " + "status:" + TKT_STATUS_PENDING + ")" +    
-       " AND " + 
-        "(" + queryField + ":" + "\'" + pointName + "\'" + "))" +
+//        "((status:" + TKT_STATUS_OPEN + " OR " + "status:" + TKT_STATUS_PENDING + ")" +    
+//       " AND " + 
+        "(" + queryField + ":" + "\'" + pointName + "\'" + ")" +
         "\"";
     FilterGetUrl = FilterGetUrl.replaceAll(" ", "%20");
     
@@ -157,10 +157,18 @@ public class BLeanovateTicketHandler
             // assuming 1 unique match as we already searched on pointname. 
             // we are assuming
             // for each point, only 1 tkt will be created. ASSUME
-            id = rspJsonObj.getJSONArray("results").getJSONObject(0).getInt("id");
-            int status = rspJsonObj.getJSONArray("results").getJSONObject(0).getInt("status");
-            System.out.println("ID: " + id + " status:" + status);    
-            return id;
+            System.out.println("TOTAL: " + total);
+            for (int i=0; i < total; i++)
+            {
+              id = rspJsonObj.getJSONArray("results").getJSONObject(i).getInt("id");
+              int status = rspJsonObj.getJSONArray("results").getJSONObject(i).getInt("status");
+              System.out.println("ID: " + id + " status:" + status); 
+              if ( (status == TKT_STATUS_OPEN) || (status == TKT_STATUS_PENDING))
+              {
+                System.out.println("FOUND!: ID: " + id + " status:" + status);    
+                return id;
+              }
+            }
           }
           else
           {
@@ -179,7 +187,7 @@ public class BLeanovateTicketHandler
         System.out.println("searchOpenTicket: json exception!!. Aborting search..");
         return ERROR;
       }
-      
+     return ERROR;
   }
 /* END searchTicket */
   
@@ -224,8 +232,7 @@ public class BLeanovateTicketHandler
     }
     catch (JSONException e)
     {
-      System.out.println("sendPOST: json exception!!");
-      System.out.println("Aborting sendPOST");
+      System.out.println("sendPOST: json exception!!. Aborting..");
       return ERROR;
     }
 
@@ -310,8 +317,7 @@ public class BLeanovateTicketHandler
     }
     catch (JSONException e)
     {
-      System.out.println("updateTicket: PUT: json exception!!");
-      System.out.println("updateTicket: Aborting PUT");
+      System.out.println("updateTicket: PUT: json exception!!. Aborting..");
       return ERROR;
     }
 

@@ -25,15 +25,16 @@ public class BLeanovateAlarmConsumer implements Runnable
     this.threadDataShare.alarmObject = bAlarmRecord;
   }
 
-  public static boolean gotoServer = true;
+  //public static boolean gotoServer = true; // testing switch to just sleep and not go to server...
+  public static boolean gotoServer = false; // testing switch to just sleep and not go to server...
   
   public void run()
   {
-    System.out.println("BLeanovateAlarmConsumer child thread with ID: " + this.childId + " starts work now...");    
+    //System.out.println("BLeanovateAlarmConsumer child thread with ID: " + this.childId + " starts work now...");    
     
     if (gotoServer)
     {
-      int ret = processAlarm(this.threadDataShare.alarmObject);
+      int ret = processAlarm(this.threadDataShare.alarmObject, this.threadDataShare);
       if (ret == OK)
         System.out.println("BLeanovateAlarmConsumer: processAlarm OK");
       else
@@ -44,7 +45,7 @@ public class BLeanovateAlarmConsumer implements Runnable
       // simulate by a delay for testing only
       try
       {
-        Thread.sleep(8000);
+        Thread.sleep(5000);
       }
       
       catch (InterruptedException e)
@@ -54,10 +55,10 @@ public class BLeanovateAlarmConsumer implements Runnable
       }
     }
     threadDataShare.threadFinished = true;
-    System.out.println("BLeanovateAlarmConsumer child thread with ID: " + this.childId + " completed work now...");    
+    //System.out.println("BLeanovateAlarmConsumer child thread with ID: " + this.childId + " completed work now...");    
   }
   
-  private int processAlarm(BAlarmRecord bAlarmRecord)
+  private int processAlarm(BAlarmRecord bAlarmRecord, ThreadDataShare threadDataShare)
   {
     BLeanovateTicketHandler ticketHandler = new BLeanovateTicketHandler();
     
@@ -85,6 +86,7 @@ public class BLeanovateAlarmConsumer implements Runnable
             {
               System.out.println("LeanovateHeliosRx: HndlAlm: Tkt Update Error!!.. retCode: " 
                     + ret);
+              threadDataShare.serverError = true;
             }
             else            
             {
@@ -100,12 +102,14 @@ public class BLeanovateAlarmConsumer implements Runnable
             // ticket for this point is not present now. either it was not created when alarm happennend, or 
             // has already been resolved or deleted in ticketing system. log and move on. nothing to do. 
             // ideally this should not happen
+            threadDataShare.serverError = true;
             return ERROR;
           }
       }
       catch (IOException e)
       {
         System.out.println("LeanovateHeliosRx: sendGET IOException!!");
+        threadDataShare.networkError = true;
         return ERROR;
       }
     }
@@ -121,11 +125,12 @@ public class BLeanovateAlarmConsumer implements Runnable
           int tktId = ticketHandler.searchOpenTicket(pointName);
           if (tktId != ERROR)
           {
-            //  ticket exists. dont do anything as point is in alarm still and tkt exists.
+            //  ticket exists. dont do anything as point is in alarm still and tkt exists. can happen if fault occurs on top of offnormal. second event
+            //  should not create a 2nd tkt by design.
             System.out.println("LeanovateHeliosRx: HndlAlm: Open Ticket exists with" + "ID:" 
                   + tktId  + "  point-name: " + pointName +
                   "\nDoing nothing as ticket exists");
-            return ERROR;
+            return OK;
           }
   
           // no tkt exists for this point name. create one.
@@ -136,12 +141,14 @@ public class BLeanovateAlarmConsumer implements Runnable
           {
             System.out.println("LeanovateHeliosRx: sendPOST: Ticket Create Error!! " +
                 "point-name: " + bAlarmRecord.getSource().encodeToString());
+            threadDataShare.serverError = true;
             return ERROR;
           }
       }
       catch (IOException e)
       {
         System.out.println("LeanovateHeliosRx: sendPOST: IOException!!");
+        threadDataShare.networkError = true;
         return ERROR;
       }             
       

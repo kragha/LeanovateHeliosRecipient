@@ -40,7 +40,7 @@ public class BMyRecipient extends BAlarmRecipient {
 /*+ ------------ END BAJA AUTO GENERATED CODE -------------- +*/
 
   // constants
-  private static final int MAX_WORKER_THREADS = 5;
+  private static final int MAX_WORKER_THREADS = 2000;
   private static final int ERROR = -1;
 
 
@@ -48,16 +48,19 @@ public class BMyRecipient extends BAlarmRecipient {
   public ThreadDataShare[] threadDataShare;
   public  boolean monitorThreadStarted;
   public  int runningThreads;
+  private int alarmEventsHandled;
+  private int getThreadErrors;
   
   public BMyRecipient()
   {
-    System.out.println("LeanovateHeliosRx: Creating Thread Data Share...");
+    System.out.println("LeanovateHeliosRx: Creating LeanovateAlarmRecipient Datastore...");
     threadDataShare = new ThreadDataShare[MAX_WORKER_THREADS];
     
     for (int i=0; i < MAX_WORKER_THREADS; i++)
     {
       threadDataShare[i] = new ThreadDataShare();
     }
+
     System.out.print("LeanovateHeliosRx: Starting Monitor thread...");
     
     Runnable r = new MonitorThread(MAX_WORKER_THREADS, threadDataShare);
@@ -69,6 +72,9 @@ public class BMyRecipient extends BAlarmRecipient {
     monitorThreadStarted = true;
     
     runningThreads = 0;
+    alarmEventsHandled = 0;
+    getThreadErrors = 0;
+    
   }
   
   public int getFreeWorkerThreadId()
@@ -84,24 +90,29 @@ public class BMyRecipient extends BAlarmRecipient {
   
   @Override
   public void handleAlarm(BAlarmRecord bAlarmRecord) {
-
-    System.out.println("\n***LeanovateHeliosRx: HndlAlm: " + "AlmRec:" + bAlarmRecord); 
+    
+    alarmEventsHandled++;
+    System.out.println("\n***LeanovateHandleAlarm: " 
+        + " EVNTS: " + alarmEventsHandled + " THREAD-ERRS: " + getThreadErrors 
+        + " AlmRec:" + bAlarmRecord); 
     
     int childId = getFreeWorkerThreadId();
     if (childId != ERROR)
     {             
-      System.out.print("LeanovateHeliosRx: Starting child thread with ID: " + childId + "...");
+      //System.out.print("LeanovateHeliosRx: Starting child thread with ID: " + childId + "...");
       Runnable r = new BLeanovateAlarmConsumer(childId, this.threadDataShare[childId], bAlarmRecord);
       Thread child = new Thread(r);
       child.setDaemon(true);
       child.start();    
       this.threadDataShare[childId].threadInUse = true; // TODO: add set method
-      System.out.println("OK");
+      //System.out.println("OK");
     }
     else
     {
       System.out.println("LeanovateHeliosRx: HndlAlm: No more free worker threads. All busy!. Unexpected error!! Check system performance design");
+      getThreadErrors++;
     }
+
   }
 }
 
@@ -111,11 +122,13 @@ class MonitorThread  implements Runnable
 {
   private int maxThreads;
   private ThreadDataShare[] threadDataShare;
+  private int maxThreadsUsedSoFar;
   
   public MonitorThread(int maxThreads, ThreadDataShare[] threadDataShare)
   {
    this.maxThreads = maxThreads;
    this.threadDataShare = threadDataShare;
+   maxThreadsUsedSoFar = 0;
   }
   
   public void run()
@@ -126,28 +139,31 @@ class MonitorThread  implements Runnable
        {
          int activeThreads = 0;
          // check threadDataShare array for abnormal stuff and act
-         System.out.println("\nLeanovateHeliosRx: Monitor: Wokeup: Checking Threads...");
+         //System.out.println("LeanovateHeliosRx: Monitor: Wokeup: Checking Threads...");
          
          for (int i=0; i < maxThreads; i++)
          {
            if (threadDataShare[i].threadInUse == true)
            {
              activeThreads++;
-             System.out.println("LeanovateHeliosRx: Monitor: threadID: " + i + " In Use");
-             System.out.println("LeanovateHeliosRx: Monitor: threadID: " + i + " Finished: " + threadDataShare[i].threadFinished);
-             System.out.println("LeanovateHeliosRx: Monitor: threadID: " + i + " Alarm Object" + threadDataShare[i].alarmObject);
-              
-             if (threadDataShare[i].networkError == true)
+/*             System.out.println("LeanovateHeliosRx: Monitor: threadID: " + i + " In Use" 
+               + " Finished: " + threadDataShare[i].threadFinished
+             + " Alarm Object" + threadDataShare[i].alarmObject
+             + " NetworkError" + threadDataShare[i].networkError
+             + " ServerError" + threadDataShare[i].serverError);
+*/              
+/*             if (threadDataShare[i].networkError == true)
                  System.out.println("LeanovateHeliosRx: Monitor: threadID: " + i + " Network Error Detected!"); 
   
              if (threadDataShare[i].serverError == true)
                System.out.println("LeanovateHeliosRx: Monitor: threadID: " + i + " Server Error Detected!");
+*/
            }
            
            // child finished work. cleanup datastore
            if (threadDataShare[i].threadFinished == true)
            {
-             System.out.println("LeanovateHeliosRx: Monitor: threadID: " + i + " Child finished job. Freeing up worker thread and data share object");
+             //System.out.println("LeanovateHeliosRx: Monitor: threadID: " + i + " Child finished job. Freeing up worker thread and data share object");
              threadDataShare[i].threadInUse = false;
              threadDataShare[i].alarmObject = null; 
              threadDataShare[i].networkError = threadDataShare[i].serverError = false;
@@ -156,8 +172,13 @@ class MonitorThread  implements Runnable
              activeThreads--;
            }
          }
-         System.out.println("LeanovateHeliosRx: Monitor: Total Active Threads: " + activeThreads);
-         System.out.println("LeanovateHeliosRx: Monitor: Total Free Threads: " + (maxThreads - activeThreads) );
+         if (activeThreads > maxThreadsUsedSoFar)
+           maxThreadsUsedSoFar = activeThreads;
+         
+         System.out.println("LeanovateHeliosRx: Monitor: Total Active Threads: " 
+                 + activeThreads + " Total Free Threads: " 
+                 + (maxThreads - activeThreads)
+                 + " max threads used till now: " + maxThreadsUsedSoFar);
          
          Thread.sleep(3000); // wake up and check every X secs - 3 secs
        }
